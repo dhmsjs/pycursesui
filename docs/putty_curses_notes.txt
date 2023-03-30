@@ -1,0 +1,4 @@
+12/19/22
+Using PuTTY to ssh into the Raspberry PI 4 I had these issues:
+
+-- The border lines were drawn as characters not lines.  I fixed this by changing the PuTTY display configuration to support VT100 line drawing characters even in UTF-8 mode.
