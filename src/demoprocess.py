@@ -1,17 +1,17 @@
-"""This simple demonstration process runs concurrently with the
-CursesUI instance. It simulates an arbitrary external process by
-just changing some of its attribute values at regular intervals.
-"""
+# This simple demonstration process runs concurrently with the
+# CursesUI instance. It simulates an arbitrary external process by
+# just changing some of its attribute values at regular intervals.
 
 import asyncio
 
-# These are the specific CursesUI identifiers that this demo process
+# These are the specific CursesUI classes that this demo process
 # references.
 try:
-    from cursesui import (log, Align, Textfield, KeyResponse, SubWindow,
-                          NewWindow, PadWindow, EditDialog, EnumDialog)
+    from cursesui import (CursesUI, log, Align, Textfield, KeyResponse,
+                          SubWindow, NewWindow, PadWindow, EditDialog,
+                          FloatDialog, EnumDialog)
 except ImportError:
-    print("Could not import something needed from cursesui.py!")
+    print("Could not find cursesui.py!")
     exit()
 
 import curses.ascii    # Provides useful key value constants
@@ -19,7 +19,6 @@ import curses.ascii    # Provides useful key value constants
 from enum import Enum
 import random
 import time
-
 
 class DemoStates(Enum):
     """ enum types for demo State display. In this case
@@ -33,7 +32,6 @@ class DemoStates(Enum):
     Cycling = 2
     Faulted = 3
 
-
 class DemoModes(Enum):
     """ enum types for demo's Mode control. For the demo the
     mode names are what the user sees and can choose, while
@@ -45,7 +43,6 @@ class DemoModes(Enum):
     Test = 33
     Run = 11
 
-
 class DemoProcess:
     """ An example of a simple class for demonstration purposes.
     It defines a coroutine process that runs concurrently with
@@ -54,7 +51,6 @@ class DemoProcess:
     Replace this with your own, real process to use the CursesUI
     class for your application.
     """
-
     def __init__(self):
         self.current_temperature = 20
         self._temperature_delta = 1
@@ -71,6 +67,12 @@ class DemoProcess:
         self.demo_green_delta = None
         self.demo_blue_delta = None
 
+        # For testing floating point values
+        self.current_percent = 0.0
+        self._percent_delta = 0.1
+        self.max_percent = 1.0
+        self.min_percent = -1.0
+
     def _update_temperature(self):
         """ Cycles the DemoProcess' current temperature attribute
         between high and low limits.
@@ -79,6 +81,15 @@ class DemoProcess:
         if (self.current_temperature >= self.max_temperature or
             self.current_temperature <= self.min_temperature):
             self._temperature_delta *= -1
+
+    def _update_percent(self):
+        """ Cycles the DemoProcess' current floating point 
+        percent attribute between high and low limits.
+        """
+        self.current_percent += self._percent_delta
+        if (self.current_percent >= self.max_percent or
+            self.current_percent <= self.min_percent):
+            self._percent_delta *= -1
 
     def _update_state(self):
         """ Randomly changes the DemoProcess' current_state_name
@@ -152,27 +163,48 @@ class DemoProcess:
                             self.demo_green_value,
                             self.demo_blue_value)
 
+        """
+        # Only for testing color pair cycling
+        self.demo_color_pair2 += self.demo_pair2_delta
+        if (self.demo_color_pair2 >= 255 or
+            self.demo_color_pair2 <= 1):
+            self.demo_pair2_delta *= -1
+
+        curses.init_pair(self.demo_color_pair2,
+                         curses.COLOR_BLACK,
+                         self.demo_color_pair2)
+
+        attr = self.colorfield.get_attrs()
+        self.colorfield.remove_attrs(attr)
+        self.colorfield.add_attrs(curses.color_pair(self.demo_color_pair2))
+        """
+
     def get_demo_color_text(self):
+        # return "Color Range {0}".format(self.demo_color_pair2)
         return "Color: R:{0} G:{1} B:{2}".format(
                 self.demo_red_value,
                 self.demo_green_value,
                 self.demo_blue_value)
 
     def get_demo_temperature_text(self):
-        """ Returns a string that displays current temperature. """
+        """ Returns a string that displays current temperature """
         return "Current Temp: {0}".format(self.current_temperature)
 
+    def get_demo_percent_text(self):
+        """ Returns a string that displays current (floating point) percent value """
+        return "Percent: {:.2f}".format(self.current_percent)
+
     def get_demo_state_text(self):
-        """ Returns a string that displays the current state value. """
+        """ Returns a string that displays the current state value """
         return "Current State: {0}".format(self.current_state_name)
 
     def get_demo_mode_text(self):
-        """ Returns a string that displays the current mode name. """
+        """ Returns a string that displays the current mode name """
         mode_list = list(DemoModes)
         return "Current Mode: {0}".format(self.mode.name)
 
     def get_demo_mode_value(self):
-        """ Returns the current mode integer value. """
+        """ Returns the current mode integer value """
         return self.mode.value
 
     def set_demo_mode(self, newmode: DemoModes):
@@ -182,7 +214,7 @@ class DemoProcess:
         self.mode = newmode
 
     def get_demo_tmax_text(self):
-        """ Returns a string that displays the max temperature value. """
+        """ Returns a string that displays the max temperature value """
         return "Max Temperature: {0}".format(self.max_temperature)
 
     def set_demo_max_temperature(self, tmax):
@@ -190,12 +222,28 @@ class DemoProcess:
         self.max_temperature = tmax
 
     def get_demo_tmin_text(self):
-        """ Returns a string that displays the min temperature value. """
+        """ Returns a string that displays the min temperature value """
         return "Min Temperature: {0}".format(self.min_temperature)
 
     def set_demo_min_temperature(self, tmin):
-        """ Sets the min temperature limit. """
+        """ Sets the min temperature limit """
         self.min_temperature = tmin
+
+    def get_demo_pmax_text(self):
+        """ Returns a string that displays the max percent value """
+        return "Max Percent: {0}".format(self.max_percent)
+
+    def set_demo_max_percent(self, pmax):
+        """ Sets the max percent limit """
+        self.max_percent = pmax
+
+    def get_demo_pmin_text(self):
+        """ Returns a string that displays the min percent value """
+        return "Min Percent: {0}".format(self.min_percent)
+
+    def set_demo_min_percent(self, pmin):
+        """ Sets the min percent limit """
+        self.min_percent = pmin
 
     async def run_fast(self):
         """ Runs a demonstration process coroutine concurrently
@@ -208,6 +256,7 @@ class DemoProcess:
         """
         while True:
             self._update_color()
+            self._update_percent()
             #await asyncio.sleep(.02)
             await asyncio.sleep(1)
 
@@ -242,10 +291,10 @@ class DemoProcess:
         # Add some static menu items to the menu Window.
         #
         # These never change so they do not need update
-        # callback functions. Note that you can use
-        # a single Textfield to display multiple lines
-        # of text. Any empty, trailing newlines will be
-        # stripped from your text.
+        # callback functions. Note that you can also
+        # use a single Textfield to display multiple
+        # lines of text. Any empty, trailing newlines
+        # will be stripped from your text.
         menurow = menuwin.get_first_row()
         menucol = menuwin.get_center_col()
         menu1 = ("Press <Tab> to select next\n"
@@ -332,6 +381,15 @@ class DemoProcess:
         # Only for testing color pair cycling
         self.colorfield = colorfield
 
+        # Add the percent field (for testing floating point values)
+        percentfield = Textfield(row, col)
+        percentfield.set_update_cb(self.get_demo_percent_text)
+        stswin.add_field(percentfield)
+
+        # Populate the Textfield before asking for the required
+        # rows.
+        percentfield.update()
+        row += percentfield.get_required_rows()
 
         # Uncomment these lines as you like for testing. These will
         # apply to the entire status Window:
@@ -364,9 +422,25 @@ class DemoProcess:
         modefield = Textfield(row, col)
         modefield.set_update_cb(self.get_demo_mode_text)
         ctlwin.add_field(modefield)
+        modefield.update()
+        row += modefield.get_required_rows()
+
+        # Add max & min percent limits to the controls Window. These
+        # are for testing the display and editing of floating point values.
+        pmaxfield = Textfield(row, col)
+        pmaxfield.set_update_cb(self.get_demo_pmax_text)
+        ctlwin.add_field(pmaxfield)
+        pmaxfield.update()
+        row += pmaxfield.get_required_rows()
+
+        pminfield = Textfield(row, col)
+        pminfield.set_update_cb(self.get_demo_pmin_text)
+        ctlwin.add_field(pminfield)
+        pminfield.update()
+        row += pminfield.get_required_rows()
 
         # Add dialog instances to these Textfields to make them
-        # editable. You need to provide each dialog instance with a
+        # editable. You need to provide each dialog instance with
         # callback routine that will write the new value into the
         # variable that the Textfield displays.
         #
@@ -392,6 +466,20 @@ class DemoProcess:
                                "Select the new mode: ",
                                self.set_demo_mode)
         modefield.set_dialog(modedialog)
+
+        # These allow the user to change the demo process floating
+        # point min and max percentage values.
+        pmaxdialog = FloatDialog(demo_ui.display, 
+                                "Enter the new maximum\n"
+                                "percentage:",
+                                self.set_demo_max_percent)
+        pmaxfield.set_dialog(pmaxdialog)
+
+        pmindialog = FloatDialog(demo_ui.display, 
+                                "Enter the new mimimum\n"
+                                "percentage:",
+                                self.set_demo_min_percent)
+        pminfield.set_dialog(pmindialog)
 
         # Create a PadWindow at the bottom for status messages.
         #
@@ -561,6 +649,7 @@ class DemoProcess:
 
         # ENTER will begin editing the selected child Window
         enter_key.bind(demo_ui.display.kr_begin_child_edit)
+
 #
 # The code below runs only when demoprocess.py is invoked from the
 # command line with "python3 demoprocess.py"
@@ -585,7 +674,9 @@ if __name__ == "__main__":
 
     # Set up a CursesUI instance to run concurrently with the 
     # DemoProcess instance.
-    from cursesui import CursesUI
+    from cursesui import (CursesUI, log, Align, Textfield, KeyResponse,
+                          SubWindow, NewWindow, PadWindow, EditDialog,
+                          FloatDialog, EnumDialog, ListDialog, TextDialog)
     demo_process = DemoProcess()
 
     # Create the demonstration user interface, telling it how
